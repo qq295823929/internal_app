@@ -11,7 +11,7 @@
 
         <div class="data_lists">
             <div class="doing_lists" v-show="tabType==true">
-                <div class="doing_list"  v-for="(item,id) in doingList" :key="id" >
+                <div class="doing_list" v-for="(item,id) in doingList" :key="id">
                     <div class="doing_list_title">
                         <span>人人通空间</span>
                         <i class="layui-icon layui-icon-right"></i>
@@ -27,14 +27,16 @@
                             <p>2018-12-12 :12:12</p>
                         </div>
                         <div class="list_progress">
-                            <canvas id="canvas_1" width="20" height="20"></canvas>
-                            <canvas id="canvas_2" width="20" height="20"></canvas>
+                            <Circle :percent="parseInt(item.TASK_PROG_DETAILS||0)" :size="30">
+                                <span class="demo-Circle-inner"
+                                      style="font-size:12px">{{item.TASK_PROG_DETAILS}}%</span>
+                            </Circle>
                         </div>
                     </div>
                     <div class="doing_list_tool">
                         <div class="delay_time"><i class="layui-icon layui-icon-tips"></i>---</div>
-                        <div class="list_delay">申请延期</div>
-                        <div class="updata_progress">更新进度</div>
+                        <div class="list_delay" @click="delay(item)">申请延期</div>
+                        <div class="updata_progress" @click="updata(item)">更新进度</div>
                     </div>
                 </div>
             </div>
@@ -55,51 +57,127 @@
                         <!--<img src="../../images/internal_plan/yz.png" />-->
                     </div>
                 </div>
-
             </div>
         </div>
+
+
+        <div class="apply_delay_box" v-show="applyDelayFlag">
+            <div class="apply_delay">
+                <div class="delay_info">
+                    <ul>
+                        <li><span>任务名称</span>
+                            <p id="delay_name">{{nowItem.TASK_NAME}}</p></li>
+                        <li><span>项目组</span>
+                            <p id="delay_pename">{{nowItem.ROLETYPENAME}}</p></li>
+                        <li><span>负责人</span>
+                            <p id="person_nanme">{{nowItem.USER_NAME_PRIN}}</p></li>
+                    </ul>
+                </div>
+                <div class="apply_delay_title">申请延期事由</div>
+                <div class="apply_delay_text">
+                    <textarea id="apply_delay_text" :modal="delayData.reason"></textarea>
+                </div>
+                <div class="apply_delay_time">
+                    <div class="apply_delay_time_trans">延期至</div>
+                    <Row>
+                        <Col span="12">
+                            <DatePicker type="datetime" :options="delayData.timeOption" :value="delayData.time"
+                                        format="yyyy-MM-dd HH:mm" placeholder="Select date"
+                                        style="width: 200px"></DatePicker>
+                        </Col>
+                    </Row>
+                </div>
+                <div class="delay_btn">
+                    <div class="cancel_delay">取消</div>
+                    <div class="sure_delay" @click="submitDelay">确认</div>
+                </div>
+            </div>
+        </div>
+
+
     </div>
 </template>
 
 <script>
+    import setting from "../../setting";
+
     export default {
         name: "Plan_lists",
-        data(){
+        data() {
             return {
-                tabType:true,
-                doingList: [],
+                tabType: true,
+                doingList: [],  //进行中的任务
+                applyDelayFlag: false,//控制申请延期的是否显示
+                nowItem: {},//当前正在操作的数据
+                delayData: {             //延期的数据
+                    reason: "",
+                    time: "",
+                    timeOption: {}
+                }
+
+
             }
         },
-        methods:{
-            changeTab:function () {
-                this.tabType=!this.tabType
+        methods: {
+            changeTab: function () {
+                this.tabType = !this.tabType
+            },
+            delay: function (obj) {
+                this.nowItem = obj;
+                var self=this;
+                this.delayData.timeOption = {
+                    disabledDate(date) {
+                        // console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
+                        console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
+                        return date<new Date(self.nowItem.REQU_COMPLETE_DATE).getTime();
+                    }
+                }
+                this.applyDelayFlag = true
+                console.log(this.nowItem);
+            },
+            submitDelay: function () {
+                if (this.delayData.reason.length < 1) {
+                    this.$Message.warning('请填写您的申请理由');
+                    return false
+                }
+                if (this.delayData.time == "") {
+                    this.$Message.warning('请选择一个延期时间');
+                    return false
+                }
+
+
+            },
+            updata: function (obj) {
+                this.nowItem = obj
             }
         },
-        mounted:function () {
-            var self=this
+        mounted: function () {
+            console.log(this.$store.state);
+            var self = this
             $.ajax({
-                url:"/anhao/JYKJTask/selectJYKJTaskProgByUserId",     //进行中的任务
-                type:"post",
-                data:{
-                    userId:8,
+                url: setting.url + "/JYKJTask/selectJYKJTaskProgByUserId",     //进行中的任务
+                type: "post",
+                data: {
+                    userId: this.$store.state.userInfo.USER_ID,
                 },
-                success:function (res) {
-                    self.doingList=res.data;
-
-
+                success: function (res) {
+                    self.doingList = res.data;
                 }
             });
 
-        }
+
+        },
+
     }
 </script>
 
 <style scoped>
-    .tab{
+    .tab {
         text-align: center;
         padding: 0.2rem 0;
     }
-    .type{
+
+    .type {
         border: 1px solid #33a9e9;
         border-radius: 3px;
         display: inline-block;
@@ -107,7 +185,8 @@
         overflow: hidden;
         font-size: 0.32rem;
     }
-    .type>div{
+
+    .type > div {
         display: inline-block;
         height: 0.6rem;
         line-height: 0.6rem;
@@ -116,103 +195,112 @@
         color: #33a9e9;
         float: left;
     }
-    .type>div.active{
+
+    .type > div.active {
         background: #33a9e9;
         color: #ffffff;
     }
 
-
-
-    .data_lists{
+    .data_lists {
 
     }
-    .doing_list{
+
+    .doing_list {
         width: 7.0rem;
         height: 3.2rem;
         border: 1px solid #e5e5e5;
-        background:  #ffffff;
+        background: #ffffff;
         margin: 0.2rem auto;
     }
-    .doing_list_title{
+
+    .doing_list_title {
         height: 0.8rem;
         border-bottom: 1px dashed #f1f1f1;
         margin: 0 0.2rem;
         line-height: 0.78rem;
         font-size: 0.3rem;
     }
-    .doing_list_title>.list_time{
+
+    .doing_list_title > .list_time {
         float: right;
         font-size: 0.26rem;
         color: #cccccc;
     }
-    .doing_list_title>i{
+
+    .doing_list_title > i {
         float: right;
     }
 
-    .list_info{
+    .list_info {
         padding: 0.3rem 0;
         overflow: hidden;
         font-size: 0.28rem;
     }
-    .list_info>div{
+
+    .list_info > div {
         float: left;
         height: 0.7rem;
     }
-    .list_info p{
+
+    .list_info p {
 
     }
-    .list_info>.person{
+
+    .list_info > .person {
         width: 1.3rem;
         text-align: left;
         padding-left: 0.2rem;
     }
-    .list_info .person span{
+
+    .list_info .person span {
 
     }
-    .list_info .person p{
+
+    .list_info .person p {
         color: #aaaaaa;
 
     }
 
-
-
-    .list_info>.time{
-        width:3.3rem;
+    .list_info > .time {
+        width: 3.3rem;
         text-align: left;
         padding: 0 0.2rem;
         border-left: 1px solid #e5e5e5;
         border-right: 1px solid #e5e5e5;
     }
-    .list_info .time span{
+
+    .list_info .time span {
         margin-bottom: 0.2rem;
     }
-    .list_info .time p{
+
+    .list_info .time p {
         color: #aaaaaa;
     }
 
-
-
-    .doing_list_tool{
+    .doing_list_tool {
         border-top: 1px solid #e5e5e5;
         padding: 0.27rem 0;
         height: 1rem;
         font-size: 0.32rem;
     }
-    .doing_list_tool>div{
+
+    .doing_list_tool > div {
         float: left;
     }
 
-    .delay_time{
+    .delay_time {
         width: 2.5rem;
         font-size: 0.22rem;
         line-height: 0.5rem;
         padding-left: 0.1rem;
     }
-    .delay_time i{
+
+    .delay_time i {
         font-size: 0.22rem;
         color: #0a8033;
     }
-    .list_delay{
+
+    .list_delay {
         border-left: 1px solid #e5e5e5;
         border-right: 1px solid #e5e5e5;
         width: 2.2rem;
@@ -221,7 +309,8 @@
         color: red;
         text-align: center;
     }
-    .updata_progress{
+
+    .updata_progress {
         width: 2.2rem;
         height: 0.5rem;
         line-height: 0.5rem;
@@ -229,33 +318,33 @@
         text-align: center;
     }
 
-
-
-
     /*已完成*/
-    .done_lists{
+    .done_lists {
         display: none;
     }
-    .done_list{
+
+    .done_list {
         width: 7.0rem;
         /*height: 3.2rem;*/
         border: 1px solid #e5e5e5;
-        background:  #ffffff;
+        background: #ffffff;
         margin: 0.2rem auto;
         border-radius: 0.1rem;
         /*padding: 0.2rem 0.2rem;*/
         position: relative;
     }
 
-    .done_info{
+    .done_info {
         font-size: 0.28rem;
         line-height: 0.5rem;
         padding: 0.2rem;
     }
-    .done_info span{
+
+    .done_info span {
         color: #777777;
     }
-    .done_img{
+
+    .done_img {
         position: absolute;
         right: 0.4rem;
         top: 1rem;
@@ -263,18 +352,16 @@
         width: 1.9rem;
         font-size: 0;
     }
-    .done_img img{
+
+    .done_img img {
         height: 100%;
         width: 100%;
 
     }
+
     /*已完成*/
 
-
-
-
-
-    .list_info>.list_progress{
+    .list_info > .list_progress {
         position: relative;
         height: 0.8rem;
         width: 0.8rem;
@@ -282,7 +369,8 @@
         /*margin-right: 0.05rem;*/
         margin-left: 0.3rem;
     }
-    .list_progress>canvas{
+
+    .list_progress > canvas {
         display: block;
         margin: 0;
         position: absolute;
@@ -293,49 +381,42 @@
         height: 100%;
         width: 100%;
     }
-    .canvas1{
+
+    .canvas1 {
         z-index: 1;
     }
 
-    .canvas2{z-index: 2; background: transparent;transform:rotate(-90deg); }
+    .canvas2 {
+        z-index: 2;
+        background: transparent;
+        transform: rotate(-90deg);
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    .task_progress{
+    .task_progress {
         padding: 0.3rem;
     }
-    .percent{
+
+    .percent {
         padding: 0.1rem 0;
     }
-    .percent span{
+
+    .percent span {
         margin-right: 0.99rem;
         font-size: 0.24rem;
     }
 
-
-
-
-    .work_delay{
+    .work_delay {
         width: 100%;
-        border-top:1px solid #cccccc;
+        border-top: 1px solid #cccccc;
         padding: 0.3rem 0;
         display: none;
     }
-    .delay_lists{
+
+    .delay_lists {
         width: 100%;
     }
-    .delay_list{
+
+    .delay_list {
         width: 100%;
         font-size: 0.28rem;
         color: #747474;
@@ -343,43 +424,49 @@
         padding: 0 0.2rem;
         overflow: hidden;
     }
-    .delay_list>div{
+
+    .delay_list > div {
         float: left;
         margin-right: 0.1rem;
     }
-    .delay_list>span{
+
+    .delay_list > span {
         float: left;
         margin-right: 1rem;
         margin-left: 0.1rem;
     }
 
-    .delay_reason_trans,.delay_to{
+    .delay_reason_trans, .delay_to {
         font-size: 0.28rem;
         font-weight: 600;
         width: 100%;
     }
-    .delay_reason{
+
+    .delay_reason {
         background: #eeeeee;
         line-height: 0.5rem;
         padding: 0.1rem;
         width: 100%;
     }
-    .delay_to span{
+
+    .delay_to span {
         float: right;
         color: #cccccc;
     }
-    .delay_to{
+
+    .delay_to {
         border-bottom: 1px solid #dddddd;
     }
 
-    .delay_examine_btn{
+    .delay_examine_btn {
         font-size: 0.3rem;
         width: 100%;
         overflow: hidden;
         padding: 0.5rem 0 0.3rem 0.3rem;
         display: none;
     }
-    .disagree_delay,.agree_delay{
+
+    .disagree_delay, .agree_delay {
         width: 3.3rem;
         height: 0.8rem;
         text-align: center;
@@ -389,43 +476,48 @@
         transition: all 0.2s linear;
     }
 
-    .disagree_delay{
+    .disagree_delay {
         border: 1px solid #cccccc;
         background: #ffffff;
         margin-right: 0.3rem;
     }
-    .disagree_delay:active{
+
+    .disagree_delay:active {
         background: #f5f5f5;
 
     }
-    .agree_delay{
+
+    .agree_delay {
         background: #169bd4;
         border: none;
         color: #ffffff;
     }
-    .agree_delay:active{
+
+    .agree_delay:active {
         background: #26a5d4;
     }
 
-
-
-    .todo_main,.todo_seconde{
+    .todo_main, .todo_seconde {
         background: #ffffff;
     }
-    .todo_main{
+
+    .todo_main {
         margin: 0.2rem 0;
     }
-    .todo_main_title{
+
+    .todo_main_title {
         overflow: hidden;
     }
-    .todo_main_trans,.todo_seconde_trans{
+
+    .todo_main_trans, .todo_seconde_trans {
         font-size: 0.25rem;
         font-weight: 600;
         padding-left: 0.3rem;
         line-height: 0.85rem;
         float: left;
     }
-    .clear_todo_main,.clear_todo_seconde{
+
+    .clear_todo_main, .clear_todo_seconde {
         float: right;
         font-size: 0.25rem;
         padding-left: 0.3rem;
@@ -433,65 +525,62 @@
         padding-right: 0.3rem;
     }
 
-    .todo_main_lists{
+    .todo_main_lists {
         overflow: hidden;
         padding: 0 0.3rem 0.2rem;
     }
-    .todo_seconde_lists{
+
+    .todo_seconde_lists {
         overflow: hidden;
         padding: 0 0.3rem 0.2rem;
     }
-    .todo_main_list{
-        width: 1.7rem;
-        height: 1.7rem;
-        text-align: center;
-        float: left;
-    }
-    .todo_seconde_list{
+
+    .todo_main_list {
         width: 1.7rem;
         height: 1.7rem;
         text-align: center;
         float: left;
     }
 
-    .todo_main_list .todo_main_img{
+    .todo_seconde_list {
+        width: 1.7rem;
+        height: 1.7rem;
+        text-align: center;
+        float: left;
+    }
+
+    .todo_main_list .todo_main_img {
         width: 1.1rem;
         height: 1.1rem;
         border-radius: 50%;
         display: inline-block;
         overflow: hidden;
     }
-    .todo_seconde_list .todo_seconde_img{
+
+    .todo_seconde_list .todo_seconde_img {
         width: 1.1rem;
         height: 1.1rem;
         border-radius: 50%;
         display: inline-block;
         overflow: hidden;
     }
-    .todo_main_img img{
+
+    .todo_main_img img {
         width: 100%;
         height: 100%;
         float: left;
     }
-    .todo_seconde_img img{
+
+    .todo_seconde_img img {
         width: 100%;
         height: 100%;
         float: left;
     }
-    .todo_main_list span{
+
+    .todo_main_list span {
         display: inline-block;
         width: 100%;
-        text-align:center;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        font-size: 0.22rem;
-        line-height: 0.5rem;
-    }
-    .todo_seconde_list span{
-        display: inline-block;
-        width: 100%;
-        text-align:center;
+        text-align: center;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
@@ -499,21 +588,30 @@
         line-height: 0.5rem;
     }
 
-    .todo_seconde_title{
+    .todo_seconde_list span {
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.22rem;
+        line-height: 0.5rem;
+    }
+
+    .todo_seconde_title {
         overflow: hidden;
     }
 
-
-
-    .details_btn{
+    .details_btn {
         margin-top: 0.8rem;
         overflow: hidden;
         padding-bottom: 0.8rem;
         padding-left: 0.3rem;
 
-
     }
-    .apply_delay_btn,.submit_progress_btn{
+
+    .apply_delay_btn, .submit_progress_btn {
         width: 3.2rem;
         height: 0.8rem;
         line-height: 0.8rem;
@@ -524,64 +622,71 @@
         background: #ffffff;
         float: left;
     }
-    .apply_delay_btn{
+
+    .apply_delay_btn {
         margin-right: 0.3rem;
     }
-    .apply_delay_btn:active,.submit_progress_btn:active{
+
+    .apply_delay_btn:active, .submit_progress_btn:active {
         background: #f5f5f5;
     }
 
-    .apply_delay_box,.submit_progress_box{
+    .apply_delay_box, .submit_progress_box {
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.5);
         position: fixed;
         top: 0;
-        display: none;
+        /*display: none;*/
         z-index: 4;
     }
 
-    .delay_info{
+    .delay_info {
 
     }
-    .delay_info ul{
+
+    .delay_info ul {
 
     }
+
     .delay_info ul li {
         line-height: 0.9rem;
         font-size: 0.34rem;
     }
-    .delay_info ul li span{
+
+    .delay_info ul li span {
         color: #bbbbbb;
     }
-    .delay_info ul li p{
+
+    .delay_info ul li p {
         float: right;
     }
 
-
-
-
-    .apply_delay,.submit_progress{
+    .apply_delay, .submit_progress {
         background: #ffffff;
         border-radius: 5px;
         margin-top: 2rem;
         width: 100%;
         padding: 0.2rem;
     }
-    .apply_delay_title,.submit_progress_title{
+
+    .apply_delay_title, .submit_progress_title {
         font-size: 0.3rem;
         font-weight: 600;
         line-height: 0.5rem;
     }
-    .submit_progress_title span{
+
+    .submit_progress_title span {
         float: right;
         color: #969696;
         font-size: 0.24rem;
     }
-    .apply_delay_text{
+
+    .apply_delay_text {
         width: 100%;
     }
-    #apply_delay_text{
+
+    #apply_delay_text {
         width: 100%;
         outline: none;
         border: 1px solid #cccccc;
@@ -592,19 +697,21 @@
         padding: 0.1rem;
     }
 
-    .apply_delay_time{
+    .apply_delay_time {
         width: 100%;
         line-height: 0.9rem;
-        overflow: hidden;
+        /*overflow: hidden;*/
         border-bottom: 1px solid #cccccc;
         margin-bottom: 1.35rem;
     }
-    .apply_delay_time_trans{
+
+    .apply_delay_time_trans {
         font-size: 0.3rem;
         font-weight: 600;
         float: left;
     }
-    #apply_delay_time{
+
+    #apply_delay_time {
         /*font-size: 0.28rem;*/
         color: #aaaaaa;
         margin-left: 2rem;
@@ -616,14 +723,17 @@
         text-align: center;
         border: none;
     }
-    .progress_status{
+
+    .progress_status {
         margin: 2rem 0;
 
     }
-    .delay_btn,.progress_btn{
+
+    .delay_btn, .progress_btn {
         overflow: hidden;
     }
-    .cancel_delay,.sure_delay,.cancel_progress,.sure_progress{
+
+    .cancel_delay, .sure_delay, .cancel_progress, .sure_progress {
         width: 3.2rem;
         border: 1px solid #cccccc;
         text-align: center;
@@ -632,18 +742,22 @@
         border-radius: 3px;
         float: left;
     }
-    .cancel_delay,.cancel_progress{
+
+    .cancel_delay, .cancel_progress {
         background: #ffffff;
         margin-right: 0.3rem;
     }
-    .sure_delay,.sure_progress{
+
+    .sure_delay, .sure_progress {
         background: #169bd4;
         color: #ffffff;
     }
-    .cancel_delay:active,.cancel_progress:active{
+
+    .cancel_delay:active, .cancel_progress:active {
         background: #f5f5f5;
     }
-    .sure_delay:active,.sure_progress:active{
+
+    .sure_delay:active, .sure_progress:active {
         background: #19a3d4;
     }
 
@@ -653,7 +767,8 @@
         display: none;
         padding: 0.5rem;
     }
-    .revoke{
+
+    .revoke {
         text-align: center;
         font-size: 0.3rem;
         line-height: 0.8rem;
@@ -662,7 +777,8 @@
         border: 1px solid #aaaaaa;
         border-radius: 5px;
     }
-    .revoke:active{
+
+    .revoke:active {
         background: #f5f5f5;
     }
 </style>

@@ -70,7 +70,9 @@
             }
         },
         created:function () {
-               
+
+
+            console.log(this.$store.state);
         },
         mounted:function () {
             var self=this;

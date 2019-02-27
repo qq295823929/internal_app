@@ -37,7 +37,7 @@
                     <div class="info_detail">
                         <div class="info_con">
                             <div class="info_tips main_do">
-                                <span>谢逊:</span>申请延期
+                                <span>{{item.USER_NAME}}:</span>{{item.MOLD}}
                             </div>
                             <div class="info_tips">
                                 <span>延期至:</span>09-15 12:00
