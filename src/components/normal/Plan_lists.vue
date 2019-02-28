@@ -75,15 +75,17 @@
                 </div>
                 <div class="apply_delay_title">申请延期事由</div>
                 <div class="apply_delay_text">
-                    <textarea id="apply_delay_text" :modal="delayData.reason"></textarea>
+                    <textarea id="apply_delay_text" v-model="delayData.reason"></textarea>
                 </div>
                 <div class="apply_delay_time">
                     <div class="apply_delay_time_trans">延期至</div>
                     <Row>
                         <Col span="12">
-                            <DatePicker type="datetime" :options="delayData.timeOption" :value="delayData.time"
+                            <DatePicker type="datetime" v-model="delayData.time" :options="delayData.timeOption"
                                         format="yyyy-MM-dd HH:mm" placeholder="Select date"
-                                        style="width: 200px"></DatePicker>
+                                        style="width: 200px"
+                                        @on-change="changeDateTime(datetime)"
+                                                            ></DatePicker>
                         </Col>
                     </Row>
                 </div>
@@ -119,6 +121,9 @@
             }
         },
         methods: {
+            changeDateTime:function(time){
+                this.delayData.time=time;
+            },
             changeTab: function () {
                 this.tabType = !this.tabType
             },
@@ -128,7 +133,7 @@
                 this.delayData.timeOption = {
                     disabledDate(date) {
                         // console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
-                        console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
+                        // console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
                         return date<new Date(self.nowItem.REQU_COMPLETE_DATE).getTime();
                     }
                 }
@@ -136,6 +141,7 @@
                 console.log(this.nowItem);
             },
             submitDelay: function () {
+                var self=this;
                 if (this.delayData.reason.length < 1) {
                     this.$Message.warning('请填写您的申请理由');
                     return false
@@ -144,6 +150,30 @@
                     this.$Message.warning('请选择一个延期时间');
                     return false
                 }
+
+
+                $.ajax({
+                    url:"/JYKJTask/insertJYKJTaskDelay",
+                    type:"post",
+                    data:{
+                        taskAlloId:self.nowItem.TASK_ALLO_ID,
+                        remark:self.delayData.reason,
+                        requCompleteDate:self.delayData.time,
+                    },
+                    success:function (res) {
+                        console.log(res);
+                        if(res.state==1){
+                            alert("成功申请")
+                        }else {
+                            alert("申请失败")
+                        }
+                    }
+                })
+
+
+
+
+
 
 
             },

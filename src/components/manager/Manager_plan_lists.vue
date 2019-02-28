@@ -7,8 +7,8 @@
                     <div class="type_item" :class="tabType==false?'active':''" @click="changeTab()">已完成</div>
                 </div>
             </div>
-            <div class="data_lists" v-show="tabType==true">
-                <div class="doing_lists">
+            <div class="data_lists">
+                <div class="doing_lists" v-show="tabType==true">
                     <router-link tag="a" :to="{name:'Manager_plan_details',query:{id:item.ID}}" v-for="(item,id) in doingList" :key="id" class="doing_list">
                         <div class="doing_list_title">
                             <span>{{item.TASK_NAME}}</span>
@@ -29,22 +29,22 @@
                     </router-link>
                 </div>
                 <div class="done_lists"  v-show="tabType==false">
-                    <div class="done_list">
+                    <router-link tag="a" :to="{name:'Manager_plan_details',query:{id:item.ID}}" v-for="(item,id) in doneList" :key="id"  class="done_list">
                         <div class="doing_list_title">
-                            <span>人人通空间</span>
+                            <span>{{item.taskName}}</span>
                             <i class="layui-icon layui-icon-right"></i>
-                            <span class="list_time">2018-12-12 15:20</span>
+                            <span class="list_time">{{item.createDate}}</span>
                         </div>
                         <div class="done_info">
-                            <div class="info_item">测试组:<span>---</span></div>
-                            <div class="info_item">测试组:<span>---</span></div>
-                            <div class="info_item">测试组:<span>2018-12-12 12:22</span></div>
-                            <div class="info_item">测试组:<span>---</span></div>
+                            <div class="info_item">测试组:<span>{{item.jykjtaskAlloCusList[3].endDate}}</span></div>
+                            <div class="info_item">后端组:<span>{{item.jykjtaskAlloCusList[2].endDate}}</span></div>
+                            <div class="info_item">前端组:<span>{{item.jykjtaskAlloCusList[1].endDate}}</span></div>
+                            <div class="info_item">UI组:<span>{{item.jykjtaskAlloCusList[0].endDate}}</span></div>
                         </div>
                         <div class="done_img">
                             <!--<img src="../../images/internal_plan/yz.png" />-->
                         </div>
-                    </div>
+                    </router-link>
                 </div>
             </div>
         </div>
@@ -54,6 +54,7 @@
 </template>
 
 <script>
+    import setting from "../../setting";
     export default {
         name: "Manager_plan_lists",
         data(){
@@ -77,17 +78,42 @@
         mounted:function () {
             var self=this;
             $.ajax({
-                url:"/anhao/JYKJTask/selectNotCompleteTaskListOfManager",     //查询未完成列表
+                url:setting.url+"/JYKJTask/selectNotCompleteTaskListOfManager",     //查询未完成列表
                 type:"post",
                 data:{
-                    userId:1
+                    userId:self.$store.state.userInfo.USER_ID
                 },
                 success:function (res) {
                     var data=res.data;
-                    self.doingList.push.apply(self.doingList,data);
+                    self.doingList=data;
 
                     // doingData=data;
                     // renderDoingList(data)
+                }
+            })
+            $.ajax({
+                url: setting.url+"/JYKJTask/selectCompleteTaskListOfManager",        //查询已完成列表
+                type: "post",
+                data: {
+                    userId: self.$store.state.userInfo.USER_ID
+                },
+                success: function (res) {
+                    var data = res.data;
+                    self.doneList=data;
+                    // var timeList=data.jykjtaskAlloCusList;
+
+                    for(let a=0;a<data.length;a++){
+                        for(let i=0;i<4;i++){
+                            if(data[a].jykjtaskAlloCusList[i]){
+
+                            }else {
+                                data[a].jykjtaskAlloCusList[i].push({endDate:'---------'})
+                            }
+                        }
+                    }
+                    console.log(data);
+
+
                 }
             })
             // console.log($);
@@ -212,12 +238,17 @@
         border-radius: 0.1rem;
         /*padding: 0.2rem 0.2rem;*/
         position: relative;
+        display: block;
     }
 
     .done_info{
         font-size: 0.28rem;
         line-height: 0.5rem;
         padding: 0.2rem;
+    }
+    .done_info .info_item{
+        display: flex;
+        justify-content: space-between;
     }
     .done_info span{
         color: #777777;

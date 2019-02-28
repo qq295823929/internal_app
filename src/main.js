@@ -12,8 +12,13 @@ import "./assets/rem"
 import "./assets/common.css"
 import iView from 'iview';
 import 'iview/dist/styles/iview.css';
+
+
+import Mui from 'vue-awesome-mui';
+
 Vue.use(iView);
 
+Vue.use(Mui);
 import { Circle } from 'iview'
 // import { Select } from 'iview'
 Vue.component('i-circle', Circle)

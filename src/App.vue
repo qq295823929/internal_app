@@ -10,18 +10,14 @@
         name: 'App',
         data:function () {
             return {
-
+                setting
             }
         },
         beforeCreate:function(){
             // console.log(setting);
 
 
-
-
-
-
-
+            console.log(setting);
             let userInfo=window.localStorage.getItem("internal");
             // alert(userInfo);
             var win=window

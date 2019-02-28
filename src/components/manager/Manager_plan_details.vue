@@ -18,16 +18,15 @@
         <!--<i-slider ></i-slider>-->
 
         <div class="manager_plan_details">
-            <div class="info_item" v-if="(this.detailsList[0].TASK_PROG_DETAILS==100)">
-                <i class="layui-icon layui-icon-circle"></i>
+            <div class="info_item" v-if="(detailsList[0]&&detailsList[0].TASK_PROG_DETAILS==100)">
+                <!--<i class="layui-icon layui-icon-circle"></i>-->
                 <div class="info_time">
-                    <span>{{detailsList[0].TASK_PROG_DETAILS}}</span>
+                    <!--<span>{{detailsList[0].TASK_PROG_DETAILS}}</span>-->
                 </div>
                 <div class="info_btn">
-                    <div class="info_send_btn">任务下发</div>
+                    <div class="info_send_btn" @click="sendTask()">任务下发</div>
                 </div>
             </div>
-
             <div class="item" v-for="(item,id) in detailsList" :key="id">
                 <div v-if="item.MOLD=='延期申请'" class="info_item">
                     <i class="layui-icon layui-icon-circle"></i>
@@ -44,15 +43,13 @@
                             </div>
                         </div>
                         <div class="info_tool">
-                            <div class="approve" v-if="item.STATUS==0" @click="approve(item)">操作</div>
-                            <div v-if="item.STATUS!=0" :class="(item.STATUS==1?'status1':'status2')">
+                            <div class="approve" v-if="item.STATUS==0&&item.STATUS_TEXT!='未操作'" @click="approve(item)">操作</div>
+                            <div v-if="(!(item.STATUS==0&&item.STATUS_TEXT!='未操作'))" :class="(item.STATUS==1?'status1':'status2')">
                                 {{item.STATUS_TEXT}}
                             </div>
                         </div>
                     </div>
                 </div>
-
-
                 <div class="info_item" v-if="item.MOLD=='任务下达'">
                     <i class="layui-icon layui-icon-circle"></i>
                     <div class="info_time">
@@ -88,7 +85,7 @@
                     <div class="info_detail">
                         <div class="info_con">
                             <div class="info_tips main_do">
-                                <span>测试组:</span>更新进度
+                                <span>{{item.USER_NAME}}:</span>更新进度
                             </div>
                         </div>
                         <div class="info_status">
@@ -103,7 +100,7 @@
         </div>
 
 
-        <div class="new_form layui-form" v-show="approveBoxShow">
+        <div class="new_form layui-form" v-show="sendShowFlag">
             <div class="form_item">
                 <div class="form_title">任务名称</div>
                 <div class="form_con">
@@ -113,112 +110,318 @@
             <div class="form_item">
                 <div class="form_title">项目组</div>
                 <div class="form_con">
-                    <input type="text" :value="planInfo.ROLETYPENAME" id="form_pename" value="UI组" readonly>
-                    <i>></i>
+                    <input type="text" :value="roleTypeText" id="form_pename" readonly>
+                    <i></i>
                 </div>
             </div>
             <div class="form_item">
                 <div class="form_title">负责人</div>
                 <div class="form_con">
-                    <i-select v-model="approveData.planPerson" style="width:200px" :change="change()">
-                        <i-option v-for="(item,id) in personList"value="1" :key="id">111</i-option>
+                    <i-select v-model="sendInfo.planPerson" style="width:200px" :change="change()">
+                        <i-option v-for="(item,id) in personList" :value="item.ID" :key="id">{{item.USER_NAME}}
+                        </i-option>
                     </i-select>
                 </div>
             </div>
             <div class="form_item">
                 <div class="form_title">截止时间</div>
-                <div class="form_con">
-                    <input type="text" id="plan_end_time" placeholder="请选择" readonly>
-                    <i>></i>
-                </div>
+                <Row>
+                    <Col span="12">
+                        <DatePicker type="datetime" :options="sendInfo.requestTime"
+                                    format="yyyy-MM-dd HH:mm" placeholder="Select date"
+                                    style="width: 200px" v-model="sendInfo.request"
+                                    @on-change="changeDateTime(datetime)"></DatePicker>
+                    </Col>
+                </Row>
             </div>
 
             <div class="send_btn">
-                <div class="cancle_send">取消</div>
-                <div id="send_btn">任务下达</div>
+                <div class="cancle_send" @click="changeSendFlag()">取消</div>
+                <div id="send_btn" @click="sendNewTask()">任务下达</div>
             </div>
         </div>
+
+
+        <div class="apply_delay_box" v-show="applyShowFlag">
+            <div class="apply_delay">
+                <div class="delay_info">
+                    <span>延期原因</span>
+                    <p id="reason">{{delay.requestReason}}</p>
+                    <ul>
+                        <li><span>申请人</span>
+                            <p id="delay_name">{{delay.delayInfo.USER_NAME}}</p></li>
+                        <li><span>项目组</span>
+                            <p id="delay_pename">{{delay.delayInfo.ROLETYPENAME}}</p></li>
+                        <li><span>延期至</span>
+                            <p id="delay_time">{{delay.delayInfo.REQU_COMPLETE_DATE}}</p></li>
+                    </ul>
+                </div>
+                <div class="apply_delay_title" v-show="delay.reject==true">申请延期事由</div>
+                <div class="apply_delay_text" v-show="delay.reject==true">
+                    <textarea id="apply_delay_text" v-model="delay.rejectReason"></textarea>
+                </div>
+                <div class="delay_btn">
+                    <div class="close_btn" v-show="delay.reject==true">取消
+                    </div>
+                    <div class="reject_btn" v-show="delay.reject==true" @click="checkDelay(0)">确定</div>
+                    <div class="cancel_delay" v-show="delay.reject==false">
+                        拒绝
+                    </div>
+                    <div class="sure_delay" v-show="delay.reject==false" @click="checkDelay(1)">同意</div>
+                </div>
+                <!--<div class="close_apply_box">关闭</div>-->
+            </div>
+        </div>
+
+
+        <div class="info_box">
+            <div class="on_off" @click="showInfoBox()">
+                ======
+            </div>
+            <div class="doing_list"  ref="doingList">
+                <div class="doing_list_title">
+                    <span id="task_name">{{planInfo.TASK_NAME}}</span>
+                    <i class="layui-icon layui-icon-right"></i>
+                    <span id="public_time" class="list_time">{{planInfo.CREATE_DATE}}</span>
+                </div>
+                <div class="list_info">
+                    <div class="percent">
+                        <div class="now_percent" :percent="planInfo.TASK_PROGRESS"></div>
+                    </div>
+                    <div class="percent_text">{{planInfo.TASK_PROGRESS}}%</div>
+                </div>
+                <div class="doing_list_tool">
+                    <div class="tool_item"><span id="pename">{{planInfo.ROLETYPENAME}}</span></div>
+                    <div class="tool_item"><span id="user_name">{{planInfo.USER_NAME}}</span></div>
+                    <div class="tool_item"><span id="updata_time">{{planInfo.UPDATE_DATE}}</span></div>
+                </div>
+            </div>
+        </div>
+
 
 
     </div>
 </template>
 
 <script>
+    import setting from "../../setting";
     export default {
         name: "Manager_plan_details",
         data: function () {
             return {
-                detailsList: [{}],      //详情的列表
-                roleType:'',    //当前完成到了第几组
-                roleTypeText:'',//当前组的名称
+                detailsList: [],      //详情的列表
+                roleType: '',    //当前完成到了第几组
+                roleTypeText: '',//当前组的名称
                 approveData: {           //审核的详情
                     planPerson: "",
                 },
-                planInfo:{},            //下方的详情
-                approveBoxShow: false,
-                personList: []
+                planInfo: {},            //下方的详情
+                // approveBoxShow: false,  //审核的弹出的显示与否;
+                sendShowFlag: false,//任务下发platid=e238a843-254e-47be-b977-6f6a26581558&的弹出显示与否;
+                personList: [],
+                sendInfo: {
+                    planPerson: '',
+                    request: '',
+                    requestTime: {
+                        disabledDate(date) {
+                            // console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
+                            // console.log(new Date(self.nowItem.REQU_COMPLETE_DATE).getTime());
+                            return date < new Date().getTime();
+                        }
+                    },
+
+                },//任务下发的信息;
+                applyShowFlag: false,
+
+                delay: {         //延期的东西
+                    delayInfo: {},
+                    reject: false,   //现在是要点拒绝还是点同意
+                    requestReason: "",   //请求延期的原因
+                    rejectReason: "",     //拒绝申请的原因
+                    delayId: "",         //需要延期的这一条数据
+                },
+                infoBoxFlag:false,
+
             }
         },
         methods: {
-            change: function () {
-
+            changeSendFlag:function(){
+                this.sendShowFlag=false
             },
-            approve: function (item) {
-                this.approveBoxShow = !this.approveBoxShow;
+            showInfoBox:function (){
+                if(this.infoBoxFlag==false){
+                    this.$refs.doingList.style.height=3.2+"rem"
+                }else {
+                    this.$refs.doingList.style.height=0
+                }
+                this.infoBoxFlag=!this.infoBoxFlag
+            },
+            checkDelay: function (type) {
+                var self=this;
+                let obj = {};
+                obj.id = this.delay.delayId;
+                obj.auditUserId = this.$store.state.userInfo.USER_ID;
+                obj.requCompleteDate = this.delay.delayInfo.REQU_COMPLETE_DATE
+
+                this.$Message.destroy()
+                if (type == 0) {    //拒绝
+
+                    if(!this.delay.rejectReason){
+                        this.$Message.info({
+                            content: '请填写您的拒绝意见哦',
+                            duration: 10
+                        });
+                        return false
+                    }
+                    obj.status = 0
+                    obj.auditRemark=this.delay.rejectReason
+
+                } else {     //同意
+                    obj.status = 1
+
+                }
 
                 $.ajax({
-                    url: "/anhao/JYKJTask/selectDevUser",     //查询下一个任务组的负责人
-                    type: "post",
-                    data: {
-                        roleType: self.roleType
-                    },
-                    success: function (res) {
-                        var data = res.data;
-                        self.personList=data;
+                    url:setting.url+"/JYKJTask/updateJYKJTaskDelayById",
+                    type:"post",
+                    data:obj,
+                    success:function (res) {
+                        if(res.state==1){
+                            self.$Message.success('提交审核成功');
+                            self.getTaskDeTails()
+                        }
                     }
                 })
 
 
 
+
+
+
+
+
+            },
+
+
+            changeDateTime: function (datetime) {
+                console.log(datetime);
+                this.sendInfo.request = datetime;
+            },
+            getTaskDeTails: function () {          //获取这个任务的所有信息
+                var self = this;
+                $.ajax({
+                    url: setting.url+"/JYKJTask/selectJYKJTaskDetails",     //查询任务详细流程
+                    type: "post",
+                    data: {
+                        taskId: self.$route.query.id
+                    },
+                    success: function (res) {
+                        var data = res.data;
+                        self.roleType = data[0].ROLE_TYPE + 1;
+                        // alert(self.roleType)
+                        if (self.roleType == 2) {
+                            self.roleTypeText = "前端组"
+                        } else if (self.roleType == 3) {
+                            self.roleTypeText = "后端组"
+                        } else if (self.roleType == 4) {
+                            self.roleTypeText = "测试"
+                        }
+                        self.detailsList.push.apply(self.detailsList, data);
+                        console.log(self.detailsList);
+                    }
+                }).then(function () {
+                    $.ajax({                //负责人
+                        url: setting.url+"/JYKJTask/selectDevUser",
+                        type: "post",
+                        data: {
+                            roleType: self.roleType
+                        },
+                        success: function (res) {
+                            console.log(res);
+                            self.personList = res.data
+                        }
+                    });
+                });
+                $.ajax({            //查询下方栏的详情
+                    url: setting.url+"/JYKJTask/selectNotCompleteTaskListOfManager",     //查询未完成列表
+                    type: "post",
+                    data: {
+                        userId: self.$store.state.userInfo.USER_ID,
+                        taskId: self.$route.query.id
+                    },
+                    success: function (res) {
+
+                        var data = res.data[0];
+                        console.log(data);
+                        self.planInfo = data;
+                    }
+                })
+            },
+
+            change: function () {
+
+            },
+            approve: function (item) {
+                var self = this;
+                this.applyShowFlag = !this.applyShowFlag;
+                self.delay.delayId = item.ID;
+                $.ajax({
+                    url: setting.url+"/JYKJTask/selectJYKJTaskDelayDetailsById",
+                    type: "post",
+                    data: {
+                        id: item.ID
+                    },
+                    success: function (res) {
+                        // $(".apply_delay_box").show();
+                        console.log(res);
+                        var data = res.data;
+                        self.delay.delayInfo = data;
+                        self.delay.requestReason = data.REMARK
+                        // $("#delay_pename").text(data.ROLETYPENAME);//申请的项目组
+                        // $("#delay_time").text(data.REQU_COMPLETE_DATE);//申请延期至的时间
+                        // $("#reason").text(data.REMARK);//申请延期的原因
+                    }
+                })
+
+
+            },
+            sendTask() { //点击下达新的任务的按钮,让弹层显示
+                this.sendShowFlag = true;
+            },
+            sendNewTask() {      //点击发送新任务的按钮,发送新任务
+
+
+                var self = this;
+
+                // alert(self.sendInfo.request);
+                // return false
+                $.ajax({
+                    url: setting.url+"/JYKJTask/addJYKJTask",
+                    type: "post",
+                    data: {
+                        taskName: self.planInfo.TASK_NAME,
+                        taskProgress: self.roleType,
+                        userId: self.$store.state.userInfo.USER_ID,
+                        requCompleteDate: self.sendInfo.request,
+                        userId1: self.sendInfo.planPerson,
+                        id: self.$route.query.id
+                    },
+                    success: function (res) {
+                        console.log(res);
+                        if (res.state == 1) {
+                            alert("审核成功")
+                            // window.history.go(-1)
+                            self.getTaskDeTails();
+                        }else{
+                            alert("审核失败")
+                        }
+                    }
+                })
+                self.sendShowFlag = false;
             }
         },
         mounted: function () {
-            var self = this;
-            $.ajax({
-                url: "/anhao/JYKJTask/selectJYKJTaskDetails",     //查询任务详细流程
-                type: "post",
-                data: {
-                    taskId: self.$route.query.id
-                },
-                success: function (res) {
-                    var data = res.data;
-                    self.roleType = data[0].ROLE_TYPE + 1;
-                    alert(self.roleType)
-                    if (self.roleType == 2) {
-                        self.roleTypeText="前端组"
-                    } else if (self.roleType == 3) {
-                        self.roleTypeText="后端组"
-                    } else if (self.roleType == 4) {
-                        self.roleTypeText="测试"
-                    }
-                    self.detailsList.push.apply(self.detailsList, data);
-                }
-            })
-
-            $.ajax({            //查询下方栏的详情
-                url: "/anhao/JYKJTask/selectNotCompleteTaskListOfManager",     //查询未完成列表
-                type: "post",
-                data: {
-                    userId: 1,
-                    taskId: self.$route.query.id
-                },
-                success: function (res) {
-                    var data = res.data[0];
-                    console.log(data);
-                    self.planInfo=data;
-                }
-            })
-
+            this.getTaskDeTails();
 
 
         }
@@ -250,17 +453,17 @@
         width: 1.7rem;
     }
 
-    .info_item:after {
-        content: '';
-        position: absolute;
-        /* top: 0; */
-        z-index: 0;
-        width: 1px;
-        height: 100%;
-        background: #cccccc;
-        left: 2rem;
-        top: 0.5rem;
-    }
+    /*.info_item:after {*/
+    /*content: '';*/
+    /*position: absolute;*/
+    /*!* top: 0; *!*/
+    /*z-index: 0;*/
+    /*width: 1px;*/
+    /*height: 100%;*/
+    /*background: #cccccc;*/
+    /*left: 2rem;*/
+    /*top: 0.5rem;*/
+    /*}*/
 
     .task_base_info .info_item:last-child:after {
         display: none;
@@ -431,7 +634,7 @@
         font-size: 0.3rem;
         font-weight: 600;
         line-height: 0.5rem;
-        display: none;
+        /*display: none;*/
 
     }
 
@@ -443,7 +646,7 @@
 
     .apply_delay_text {
         width: 100%;
-        display: none;
+        /*display: none;*/
     }
 
     #apply_delay_text {
@@ -495,11 +698,12 @@
     }
 
     .close_btn, .reject_btn {
-        display: none;
+        /*display: none;*/
     }
 
     .delay_btn {
         overflow: hidden;
+        display: flex;
     }
 
     .sure_delay, .reject_btn {
@@ -519,7 +723,7 @@
     /*底部信息栏*/
     .info_box {
         background: #ffffff;
-        position: absolute;
+        position: fixed;
         bottom: 0;
         width: 100%;
         z-index: 156;
@@ -544,7 +748,10 @@
         /*margin: 0.2rem auto;*/
         /*border-radius: 0.1rem;*/
         border-top: 1px solid #e5e5e5;
-        display: none;
+        /*display: none;*/
+        overflow: hidden;
+        transition: all 0.2s ease;
+        height: 0;
     }
 
     .doing_list_title {

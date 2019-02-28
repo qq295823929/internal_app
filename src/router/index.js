@@ -13,7 +13,7 @@ Vue.use(Router)
 
 
 const router=new Router({
-    mode: 'history',
+    mode: 'hash',
     routes: [
         {path: '/', name: 'Manager_plan_lists', component: Manager_plan_lists,meta: { navShow: true, cname: '一级页面' }},//管理端列表
         {path: '/manager_plan_details', name: 'Manager_plan_details', component: Manager_plan_details,meta: { navShow: true, cname: '一级页面' }},//管理端详情
