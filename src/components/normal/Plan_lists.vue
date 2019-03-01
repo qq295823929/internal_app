@@ -84,17 +84,45 @@
                             <DatePicker type="datetime" v-model="delayData.time" :options="delayData.timeOption"
                                         format="yyyy-MM-dd HH:mm" placeholder="Select date"
                                         style="width: 200px"
-                                        @on-change="changeDateTime(datetime)"
-                                                            ></DatePicker>
+                                        @on-change="(datetime) =>{ changeDateTime(datetime)}"
+                            ></DatePicker>
                         </Col>
                     </Row>
                 </div>
                 <div class="delay_btn">
-                    <div class="cancel_delay">取消</div>
+                    <div class="cancel_delay" @click="()=>{applyDelayFlag=false}">取消</div>
                     <div class="sure_delay" @click="submitDelay">确认</div>
                 </div>
             </div>
         </div>
+
+        <!--<div class="submit_progress_box" ref="submit_box">-->
+
+        <!--</div>-->
+
+        <Modal
+                v-model="progressFlag"
+                title="Common Modal dialog box title"
+                @on-ok=""
+                @on-cancel="">
+            <div class="submit_progress">
+                <div class="submit_progress_title">提交完成度<span>注:100%即为完成</span></div>
+                <div class="progress_status">
+                    <div class="percent">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span style="margin: 0">100%</span>
+                    </div>
+                    <Slider v-model="progressVelue"></Slider>
+                    <!--<input type="range" value="60" min="0" max="100" id="status"/>-->
+                </div>
+            </div>
+        </Modal>
+
+
+
 
 
     </div>
@@ -102,6 +130,40 @@
 
 <script>
     import setting from "../../setting";
+//     document.addEventListener('plusready', function() {
+//         var webview = plus.webview.currentWebview();
+//         plus.key.addEventListener('backbutton', function() {
+//             webview.canBack(function(e) {
+//                 if(e.canBack) {
+//                     webview.back();
+//                     alert("能返回")
+//                 } else {
+// //webview.close(); //hide,quit
+//                     alert("bu")
+// //plus.runtime.quit();
+//                     mui.plusReady(function() {
+// //首页返回键处理
+// //处理逻辑：1秒内，连续两次按返回键，则退出应用；
+//                         var first = null;
+//                         plus.key.addEventListener('backbutton', function() {
+// //首次按键，提示‘再按一次退出应用’
+//                             if (!first) {
+//                                 first = new Date().getTime();
+//                                 mui.toast('再按一次退出应用');
+//                                 setTimeout(function() {
+//                                     first = null;
+//                                 }, 1000);
+//                             } else {
+//                                 if (new Date().getTime() - first < 1500) {
+//                                     plus.runtime.quit();
+//                                 }
+//                             }
+//                         }, false);
+//                     });
+//                 }
+//             })
+//         });
+//     });
 
     export default {
         name: "Plan_lists",
@@ -115,12 +177,29 @@
                     reason: "",
                     time: "",
                     timeOption: {}
-                }
+                },
+                progressFlag:false,
+                progressVelue:1    //当前任务的进度条
 
 
             }
         },
         methods: {
+
+            getTaskList:function(){
+                console.log(this.$store.state);
+                var self = this
+                $.ajax({
+                    url: setting.url + "/JYKJTask/selectJYKJTaskProgByUserId",     //进行中的任务
+                    type: "post",
+                    data: {
+                        userId: this.$store.state.userInfo.USER_ID,
+                    },
+                    success: function (res) {
+                        self.doingList = res.data;
+                    }
+                });
+            },
             changeDateTime:function(time){
                 this.delayData.time=time;
             },
@@ -129,6 +208,13 @@
             },
             delay: function (obj) {
                 this.nowItem = obj;
+                if(obj.HASNOTAUDIT==1){
+                    this.$Message.destroy()
+                    this.$Message.warning('这个方案已有一个延期未经过审核,无法继续申请');
+                    return false
+                }
+
+
                 var self=this;
                 this.delayData.timeOption = {
                     disabledDate(date) {
@@ -153,7 +239,7 @@
 
 
                 $.ajax({
-                    url:"/JYKJTask/insertJYKJTaskDelay",
+                    url: setting.url +"/JYKJTask/insertJYKJTaskDelay",
                     type:"post",
                     data:{
                         taskAlloId:self.nowItem.TASK_ALLO_ID,
@@ -163,37 +249,22 @@
                     success:function (res) {
                         console.log(res);
                         if(res.state==1){
-                            alert("成功申请")
+                            self.getTaskList();
+                            self.$Message.warning('申请成功');
                         }else {
-                            alert("申请失败")
+                            // alert("申请失败")
                         }
                     }
                 })
-
-
-
-
-
-
-
+                this.applyDelayFlag=false;
             },
             updata: function (obj) {
-                this.nowItem = obj
+                this.nowItem = obj;
+                this.progressFlag=true;
             }
         },
         mounted: function () {
-            console.log(this.$store.state);
-            var self = this
-            $.ajax({
-                url: setting.url + "/JYKJTask/selectJYKJTaskProgByUserId",     //进行中的任务
-                type: "post",
-                data: {
-                    userId: this.$store.state.userInfo.USER_ID,
-                },
-                success: function (res) {
-                    self.doingList = res.data;
-                }
-            });
+            this.getTaskList()
 
 
         },
@@ -695,7 +766,6 @@
     .apply_delay, .submit_progress {
         background: #ffffff;
         border-radius: 5px;
-        margin-top: 2rem;
         width: 100%;
         padding: 0.2rem;
     }

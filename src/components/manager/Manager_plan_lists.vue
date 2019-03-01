@@ -228,7 +228,6 @@
 
 
     /*已完成*/
-
     .done_list{
         width: 7.0rem;
         /*height: 3.2rem;*/
